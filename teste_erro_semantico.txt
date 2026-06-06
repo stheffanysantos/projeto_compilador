@@ -1,0 +1,7 @@
+PROGRAM erroSemantico;
+VAR
+  x : INTEGER;
+BEGIN
+  y := 10;
+  x := y + 1;
+END.

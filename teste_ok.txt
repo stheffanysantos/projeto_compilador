@@ -1,0 +1,17 @@
+PROGRAM exemplo;
+VAR
+  x, y, z : INTEGER;
+  flag     : BOOLEAN;
+  nome     : STRING;
+BEGIN
+  READ(x, y);
+  IF x > y THEN
+    z := x
+  ELSE
+    z := y;
+  WHILE z > 0 DO
+    z := z - 1;
+  flag := x == y;
+  WRITE("Resultado: ", z);
+  WRITE(flag);
+END.

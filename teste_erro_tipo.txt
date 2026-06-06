@@ -1,0 +1,8 @@
+PROGRAM erroTipo;
+VAR
+  x : INTEGER;
+  flag : BOOLEAN;
+BEGIN
+  x := TRUE;
+  flag := x + 1;
+END.

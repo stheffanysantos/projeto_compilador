@@ -1,0 +1,10 @@
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/src/main/java/compilador/GeradorCodigo.java
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/src/main/java/compilador/TipoVariavel.java
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/src/main/java/compilador/AnalisadorSemantico.java
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/target/generated-sources/antlr4/AnalisadorLexicoLexer.java
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/target/generated-sources/antlr4/AnalisadorSintaticoParser.java
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/target/generated-sources/antlr4/AnalisadorSintaticoParserVisitor.java
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/target/generated-sources/antlr4/AnalisadorSintaticoParserBaseVisitor.java
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/src/main/java/compilador/TabelaSimbolos.java
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/src/main/java/compilador/Simbolo.java
+/home/stheffany/Documentos/FACULDADE/compiladores/compilador/src/main/java/compilador/Main.java
