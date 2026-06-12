@@ -1,0 +1,6 @@
+PROGRAM erroOverflow;
+VAR
+  x : INTEGER;
+BEGIN
+  x := 40000;
+END.

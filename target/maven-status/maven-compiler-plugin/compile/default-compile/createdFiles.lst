@@ -1,9 +1,13 @@
+compilador/Instrucao$Tipo.class
 compilador/AnalisadorSintaticoParser$OpRelacionalContext.class
 compilador/AnalisadorSintaticoParserBaseVisitor.class
 compilador/AnalisadorSintaticoParser$CmdLeituraContext.class
 compilador/AnalisadorSintaticoParser$DeclaracaoTipoContext.class
 compilador/AnalisadorSintaticoParser$ListaDeclaracoesContext.class
 compilador/AnalisadorSintaticoParser$BlocoComandosContext.class
+compilador/Otimizador.class
+compilador/GeradorAssembly.class
+compilador/Instrucao.class
 compilador/AnalisadorSintaticoParser$ComandoContext.class
 compilador/AnalisadorSintaticoParserVisitor.class
 compilador/AnalisadorSintaticoParser$DeclaracoesContext.class
@@ -12,6 +16,7 @@ compilador/AnalisadorSintaticoParser$ListaIdsContext.class
 compilador/TabelaSimbolos.class
 compilador/AnalisadorSintaticoParser$ListaEscritaContext.class
 compilador/AnalisadorSintaticoParser$ExpressaoRelacionalContext.class
+compilador/GeradorAssembly$1.class
 compilador/AnalisadorSintaticoParser$ExpressaoContext.class
 compilador/Main.class
 compilador/Main$2.class
@@ -25,8 +30,8 @@ compilador/AnalisadorSintaticoParser$ItemEscritaContext.class
 compilador/AnalisadorSintaticoParser$ExpressaoOrContext.class
 compilador/AnalisadorSintaticoParser$ExpressaoPrimariaContext.class
 compilador/AnalisadorSintaticoParser$TipoContext.class
-compilador/AnalisadorSintaticoParser$CmdWhileContext.class
 compilador/AnalisadorSintaticoParser$CmdIfContext.class
+compilador/AnalisadorSintaticoParser$CmdWhileContext.class
 compilador/AnalisadorSintaticoParser$ListaComandosContext.class
 compilador/Main$1.class
 compilador/AnalisadorSintaticoParser$ProgramaContext.class

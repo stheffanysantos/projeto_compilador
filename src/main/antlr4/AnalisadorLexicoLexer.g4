@@ -51,18 +51,11 @@ VIRGULA  : ','  ;
 ABRE_PAR : '('  ;
 FECHA_PAR: ')'  ;
 
-// Constante Inteira
+// Constante Inteira.
+// A verificação do limite físico (-32768..32767, 2 bytes com sinal) é
+// responsabilidade da análise semântica (Overflow de Constante).
 CTE
     : DIGITO+
-    {
-        long valor = Long.parseLong(getText());
-        if (valor > 65535) {
-            // Erro fatal: interrompe imediatamente
-            throw new org.antlr.v4.runtime.LexerNoViableAltException(
-                this, _input, _tokenStartCharIndex, null
-            );
-        }
-    }
     ;
 
 CADEIA   : '"' (~["\r\n])* '"' ;
@@ -71,7 +64,12 @@ ID
     : LETRA (LETRA | DIGITO)*
     {
         if (getText().length() > 16) {
-            setText(getText().substring(0, 16));
+            String original = getText();
+            String truncado = original.substring(0, 16);
+            System.err.printf(
+                "AVISO LEXICO [linha %d, coluna %d]: identificador '%s' excede 16 caracteres; truncado para '%s'.%n",
+                getLine(), getCharPositionInLine() + 1, original, truncado);
+            setText(truncado);
         }
     }
     ;

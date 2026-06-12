@@ -1,0 +1,12 @@
+PROGRAM otimizacao;
+VAR
+  a, x, y, z : INTEGER;
+BEGIN
+  READ(a);
+  x := 2 + 5;
+  y := a * 4;
+  z := x + 10;
+  IF FALSE THEN
+    z := 0;
+  WRITE(x, y, z);
+END.

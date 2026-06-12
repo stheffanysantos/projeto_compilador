@@ -105,12 +105,46 @@ public class Main {
 
         System.out.println("[OK] Analise semantica concluida sem erros.");
 
-        // Geração de Código Intermediário
+        // Geração de Código Intermediário (3AC)
         System.out.println("\n GERACAO DE CODIGO INTERMEDIARIO");
         GeradorCodigo gerador = new GeradorCodigo();
         gerador.visit(arvore);
         gerador.imprimirCodigo();
 
-        System.out.println("Compilacao concluida");
+        // Otimização de Código Intermediário
+        System.out.println("\n OTIMIZACAO DE CODIGO INTERMEDIARIO");
+        Otimizador otimizador = new Otimizador(gerador.getInstrucoes());
+        java.util.List<Instrucao> otimizado = otimizador.otimizar();
+        otimizador.imprimirCodigo();
+
+        // Geração de Código Final (Assembly x86)
+        System.out.println("\n GERACAO DE CODIGO FINAL (ASSEMBLY x86)");
+        GeradorAssembly geradorAsm = new GeradorAssembly(otimizado, semantico.getMapaTipos());
+        String assembly = geradorAsm.gerar();
+        System.out.println(assembly);
+
+        // Grava os artefatos gerados em arquivos.
+        gravarArquivo("saida.tac", linearizar(gerador.getInstrucoes()));
+        gravarArquivo("saida_otimizado.tac", linearizar(otimizado));
+        gravarArquivo("saida.asm", assembly);
+        System.out.println("Artefatos gerados: saida.tac, saida_otimizado.tac, saida.asm");
+
+        System.out.println("\n[OK] Compilacao concluida com sucesso.");
+    }
+
+    private static String linearizar(java.util.List<Instrucao> instrucoes) {
+        StringBuilder sb = new StringBuilder();
+        for (Instrucao i : instrucoes) {
+            sb.append(i.tipo == Instrucao.Tipo.LABEL ? i.toString() : "    " + i).append('\n');
+        }
+        return sb.toString();
+    }
+
+    private static void gravarArquivo(String nome, String conteudo) {
+        try {
+            java.nio.file.Files.writeString(java.nio.file.Path.of(nome), conteudo);
+        } catch (java.io.IOException e) {
+            System.err.println("Falha ao gravar " + nome + ": " + e.getMessage());
+        }
     }
 }

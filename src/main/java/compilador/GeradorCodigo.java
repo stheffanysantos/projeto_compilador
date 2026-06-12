@@ -3,89 +3,49 @@ package compilador;
 import java.util.ArrayList;
 import java.util.List;
 
-import compilador.AnalisadorSintaticoParser;
-import compilador.AnalisadorSintaticoParserBaseVisitor;
-
+/**
+ * Geração de Código Intermediário (Código de Três Endereços - 3AC).
+ *
+ * Percorre a árvore sintática validada e a lineariza em uma lista de
+ * {@link Instrucao}. Utiliza geradores de temporárias virtuais (t0, t1, ...) e
+ * de rótulos simbólicos de desvio (L0, L1, ...), conforme a especificação.
+ *
+ * Os visitadores de expressão retornam diretamente o "endereço" do resultado:
+ * o nome de uma temporária, de uma variável ou um literal imediato.
+ */
 public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> {
 
-    private final List<String> instrucoes = new ArrayList<>();
+    private final List<Instrucao> instrucoes = new ArrayList<>();
     private int contadorTemp = 0;
     private int contadorLabel = 0;
 
-    // Métodos auxiliares
-    private String novoTemp() {
-        return "t" + contadorTemp++;
-    }
+    private String novoTemp()  { return "t" + contadorTemp++; }
+    private String novoLabel() { return "L" + contadorLabel++; }
+    private void emite(Instrucao i) { instrucoes.add(i); }
 
-    private String novoLabel() {
-        return "L" + contadorLabel++;
-    }
-
-    private void emite(String instrucao) {
-        instrucoes.add(instrucao);
-    }
-
-    private void emiteLabel(String label) {
-        instrucoes.add(label + ":");
-    }
-
-    public List<String> getInstrucoes() {
-        return List.copyOf(instrucoes);
-    }
+    public List<Instrucao> getInstrucoes() { return instrucoes; }
 
     public void imprimirCodigo() {
-        System.out.println("=== CODIGO INTERMEDIARIO GERADO ===");
-        instrucoes.forEach(System.out::println);
+        System.out.println("=== CODIGO INTERMEDIARIO (3AC) ===");
+        for (Instrucao i : instrucoes) {
+            // Rótulos sem recuo; demais instruções com recuo.
+            System.out.println(i.tipo == Instrucao.Tipo.LABEL ? i.toString() : "    " + i);
+        }
         System.out.println();
     }
 
     @Override
     public String visitPrograma(AnalisadorSintaticoParser.ProgramaContext ctx) {
-        emite("; === Programa: " + ctx.ID().getText() + " ===");
-        emite("");
         visit(ctx.declaracoes());
-        emite("");
         visit(ctx.blocoComandos());
-        emite("");
-        emite("HALT");
+        emite(Instrucao.halt());
         return null;
     }
 
-    // Declarações
+    // ----- Declarações -----
+    // Não geram código 3AC; a reserva de memória é feita na geração final.
 
-    @Override
-    public String visitDeclaracoes(AnalisadorSintaticoParser.DeclaracoesContext ctx) {
-        if (ctx.VAR() != null) {
-            emite("; Declaracoes de variaveis");
-            visit(ctx.listaDeclaracoes());
-        }
-        return null;
-    }
-
-    @Override
-    public String visitListaDeclaracoes(
-            AnalisadorSintaticoParser.ListaDeclaracoesContext ctx) {
-        visit(ctx.declaracaoTipo());
-        if (ctx.listaDeclaracoes() != null) {
-            visit(ctx.listaDeclaracoes());
-        }
-        return null;
-    }
-
-    @Override
-    public String visitDeclaracaoTipo(
-            AnalisadorSintaticoParser.DeclaracaoTipoContext ctx) {
-        String tipo = ctx.tipo().getText().toUpperCase();
-        AnalisadorSintaticoParser.ListaIdsContext lista = ctx.listaIds();
-        while (lista != null) {
-            String nome = lista.ID().getText().toLowerCase();
-            emite(" VAR " + nome + "; tipo: " + tipo);
-            lista = lista.listaIds();
-        }
-        return null;
-    }
-
-    // Bloco de Comandos
+    // ----- Bloco de Comandos -----
     @Override
     public String visitBlocoComandos(AnalisadorSintaticoParser.BlocoComandosContext ctx) {
         visit(ctx.listaComandos());
@@ -94,9 +54,7 @@ public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> 
 
     @Override
     public String visitListaComandos(AnalisadorSintaticoParser.ListaComandosContext ctx) {
-        for (var cmd : ctx.comando()) {
-            visit(cmd);
-        }
+        for (var cmd : ctx.comando()) visit(cmd);
         return null;
     }
 
@@ -105,31 +63,29 @@ public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> 
         return visitChildren(ctx);
     }
 
-    // Atribuição: Id := expr
+    // ----- Atribuição: ID := expr -----
     @Override
     public String visitCmdAtribuicao(AnalisadorSintaticoParser.CmdAtribuicaoContext ctx) {
-        String varNome = ctx.ID().getText().toLowerCase();
-        String tempResultado = visit(ctx.expressao());
-        emite(" STORE " + varNome + ", " + tempResultado);
+        String nome = ctx.ID().getText().toLowerCase();
+        String resultado = visit(ctx.expressao());
+        emite(Instrucao.copia(nome, resultado));
         return null;
     }
 
-    // Comando READ
+    // ----- READ -----
     @Override
     public String visitCmdLeitura(AnalisadorSintaticoParser.CmdLeituraContext ctx) {
-        emite(" ; READ");
         AnalisadorSintaticoParser.ListaIdsContext lista = ctx.listaIds();
         while (lista != null) {
-            emite(" READ " + lista.ID().getText().toLowerCase());
+            emite(Instrucao.read(lista.ID().getText().toLowerCase()));
             lista = lista.listaIds();
         }
         return null;
     }
 
-    // Comando WRITE
+    // ----- WRITE -----
     @Override
     public String visitCmdEscrita(AnalisadorSintaticoParser.CmdEscritaContext ctx) {
-        emite(" ; WRITE");
         visit(ctx.listaEscrita());
         return null;
     }
@@ -144,60 +100,52 @@ public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> 
     @Override
     public String visitItemEscrita(AnalisadorSintaticoParser.ItemEscritaContext ctx) {
         if (ctx.CADEIA() != null) {
-            String temp = novoTemp();
-            emite(" LOAD " + temp + ", " + ctx.CADEIA().getText());
-            emite(" WRITE " + temp);
+            emite(Instrucao.writeCadeia(ctx.CADEIA().getText()));
         } else {
             String temp = visit(ctx.expressao());
-            emite(" WRITE " + temp);
+            emite(Instrucao.write(temp));
         }
         return null;
     }
 
-    // Comando if
+    // ----- IF / IF-ELSE -----
     @Override
     public String visitCmdIf(AnalisadorSintaticoParser.CmdIfContext ctx) {
-        String tempCond = visit(ctx.expressao());
+        String cond = visit(ctx.expressao());
 
-        if (ctx.comando().size() == 2) {
+        if (ctx.comando().size() == 2) {       // IF-THEN-ELSE
             String labelElse = novoLabel();
             String labelFim  = novoLabel();
-
-            emite(" ; IF-THEN-ELSE");
-            emite(" JUMPF " + tempCond + ", " + labelElse);
+            emite(Instrucao.ifFalse(cond, labelElse));
             visit(ctx.comando(0));
-            emite("    JUMP " + labelFim);
-            emiteLabel(labelElse);
+            emite(Instrucao.goTo(labelFim));
+            emite(Instrucao.label(labelElse));
             visit(ctx.comando(1));
-            emiteLabel(labelFim);
-        } else {
+            emite(Instrucao.label(labelFim));
+        } else {                                // IF-THEN
             String labelFim = novoLabel();
-            emite(" ; IF-THEN");
-            emite(" JUMPF " + tempCond + ", " + labelFim);
+            emite(Instrucao.ifFalse(cond, labelFim));
             visit(ctx.comando(0));
-            emiteLabel(labelFim);
+            emite(Instrucao.label(labelFim));
         }
-
         return null;
     }
 
-    // Comando WHILE
+    // ----- WHILE -----
     @Override
     public String visitCmdWhile(AnalisadorSintaticoParser.CmdWhileContext ctx) {
         String labelInicio = novoLabel();
         String labelFim    = novoLabel();
-
-        emite(" ; WHILE");
-        emiteLabel(labelInicio);
-        String tempCond = visit(ctx.expressao());
-        emite(" JUMPF " + tempCond + ", " + labelFim);
+        emite(Instrucao.label(labelInicio));
+        String cond = visit(ctx.expressao());
+        emite(Instrucao.ifFalse(cond, labelFim));
         visit(ctx.comando());
-        emite(" JUMP " + labelInicio);
-        emiteLabel(labelFim);
+        emite(Instrucao.goTo(labelInicio));
+        emite(Instrucao.label(labelFim));
         return null;
     }
 
-    // Expressões
+    // ----- Expressões -----
     @Override
     public String visitExpressao(AnalisadorSintaticoParser.ExpressaoContext ctx) {
         return visit(ctx.expressaoRelacional());
@@ -205,37 +153,24 @@ public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> 
 
     @Override
     public String visitExpressaoRelacional(AnalisadorSintaticoParser.ExpressaoRelacionalContext ctx) {
-        String tempEsq = visit(ctx.expressaoAditiva(0));
-
+        String esq = visit(ctx.expressaoAditiva(0));
         if (ctx.expressaoAditiva().size() > 1) {
-            String tempDir = visit(ctx.expressaoAditiva(1));
-            String temp    = novoTemp();
-
-            String instrucao = switch (ctx.opRelacional().getText()) {
-                case "<"  -> "LT";
-                case "<=" -> "LE";
-                case ">"  -> "GT";
-                case ">=" -> "GE";
-                case "==" -> "EQ";
-                case "<>" -> "NE";
-                default   -> "EQ";
-            };
-            emite("  " + instrucao + " " + temp + ", " + tempEsq + ", " + tempDir);
+            String dir = visit(ctx.expressaoAditiva(1));
+            String temp = novoTemp();
+            emite(Instrucao.binaria(temp, esq, ctx.opRelacional().getText(), dir));
             return temp;
         }
-        return tempEsq;
+        return esq;
     }
 
     @Override
     public String visitExpressaoAditiva(AnalisadorSintaticoParser.ExpressaoAditivaContext ctx) {
         String resultado = visit(ctx.expressaoOr(0));
-
         for (int i = 1; i < ctx.expressaoOr().size(); i++) {
-            String tempDir = visit(ctx.expressaoOr(i));
+            String dir = visit(ctx.expressaoOr(i));
+            String op  = ctx.getChild(2 * i - 1).getText();   // "+" ou "-"
             String temp = novoTemp();
-
-            String op = ctx.getChild(2 * i - 1).getText();
-            emite("   " + (op.equals("+") ? "ADD" : "SUB")  + " " + temp + ", " + resultado + ", " + tempDir);
+            emite(Instrucao.binaria(temp, resultado, op, dir));
             resultado = temp;
         }
         return resultado;
@@ -244,12 +179,10 @@ public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> 
     @Override
     public String visitExpressaoOr(AnalisadorSintaticoParser.ExpressaoOrContext ctx) {
         String resultado = visit(ctx.expressaoAnd(0));
-
         for (int i = 1; i < ctx.expressaoAnd().size(); i++) {
-            String tempDir = visit(ctx.expressaoAnd(i));
+            String dir = visit(ctx.expressaoAnd(i));
             String temp = novoTemp();
-
-            emite("   OR " + temp + ", " + resultado + ", " + tempDir);
+            emite(Instrucao.binaria(temp, resultado, "OR", dir));
             resultado = temp;
         }
         return resultado;
@@ -258,12 +191,10 @@ public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> 
     @Override
     public String visitExpressaoAnd(AnalisadorSintaticoParser.ExpressaoAndContext ctx) {
         String resultado = visit(ctx.expressaoMultiplicativa(0));
-
         for (int i = 1; i < ctx.expressaoMultiplicativa().size(); i++) {
-            String tempDir = visit(ctx.expressaoMultiplicativa(i));
+            String dir = visit(ctx.expressaoMultiplicativa(i));
             String temp = novoTemp();
-
-            emite("   AND " + temp + ", " + resultado + ", " + tempDir);
+            emite(Instrucao.binaria(temp, resultado, "AND", dir));
             resultado = temp;
         }
         return resultado;
@@ -272,27 +203,22 @@ public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> 
     @Override
     public String visitExpressaoMultiplicativa(AnalisadorSintaticoParser.ExpressaoMultiplicativaContext ctx) {
         String resultado = visit(ctx.expressaoUnaria(0));
-
         for (int i = 1; i < ctx.expressaoUnaria().size(); i++) {
-            String tempDir = visit(ctx.expressaoUnaria(i));
-            String temp    = novoTemp();
-            String op = ctx.getChild(2 * i - 1).getText();
-
-            emite("    " + (op.equals("*") ? "MUL" : "DIV")
-                    + " " + temp + ", " + resultado + ", " + tempDir);
+            String dir = visit(ctx.expressaoUnaria(i));
+            String op  = ctx.getChild(2 * i - 1).getText();   // "*" ou "/"
+            String temp = novoTemp();
+            emite(Instrucao.binaria(temp, resultado, op, dir));
             resultado = temp;
         }
-
         return resultado;
     }
 
     @Override
     public String visitExpressaoUnaria(AnalisadorSintaticoParser.ExpressaoUnariaContext ctx) {
-
         if (ctx.NEGACAO() != null) {
             String operando = visit(ctx.expressaoPrimaria());
             String temp = novoTemp();
-            emite("    NOT " + temp + ", " + operando);
+            emite(Instrucao.unaria(temp, "~", operando));
             return temp;
         }
         return visit(ctx.expressaoPrimaria());
@@ -300,35 +226,11 @@ public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> 
 
     @Override
     public String visitExpressaoPrimaria(AnalisadorSintaticoParser.ExpressaoPrimariaContext ctx) {
-
-        if (ctx.ID() != null) {
-            String temp = novoTemp();
-            emite("    LOAD " + temp + ", " + ctx.ID().getText().toLowerCase());
-            return temp;
-        }
-
-        if (ctx.CTE() != null) {
-            String temp = novoTemp();
-            emite("    LOAD " + temp + ", #" + ctx.CTE().getText());
-            return temp;
-        }
-
-        if (ctx.TRUE() != null) {
-            String temp = novoTemp();
-            emite("    LOAD " + temp + ", #1   ; TRUE");
-            return temp;
-        }
-
-        if (ctx.FALSE() != null) {
-            String temp = novoTemp();
-            emite("    LOAD " + temp + ", #0   ; FALSE");
-            return temp;
-        }
-
-        if (ctx.expressao() != null) {
-            return visit(ctx.expressao());
-        }
-
+        if (ctx.ID()   != null) return ctx.ID().getText().toLowerCase();
+        if (ctx.CTE()  != null) return ctx.CTE().getText();
+        if (ctx.TRUE() != null) return "1";   // verdadeiro mapeia para 1
+        if (ctx.FALSE()!= null) return "0";   // falso mapeia para 0
+        if (ctx.expressao() != null) return visit(ctx.expressao());
         return null;
     }
 }

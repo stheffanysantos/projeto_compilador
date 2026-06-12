@@ -5,7 +5,13 @@ import compilador.AnalisadorSintaticoParserBaseVisitor;
 import org.antlr.v4.runtime.Token;
 
 public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<TipoVariavel> {
-    private final TabelaSimbolos tabelaSimbolos = new TabelaSimbolos();
+
+    // Limites físicos de uma constante inteira (2 bytes com sinal).
+    private static final int CTE_MIN = -32768;
+    private static final int CTE_MAX = 32767;
+
+    private final TabelaSimbolos tabelaGlobal = new TabelaSimbolos();
+    private TabelaSimbolos escopoAtual = tabelaGlobal;  // escopo corrente (suporta aninhamento)
     private int totalErros = 0;
 
     // Métodos auxiliares
@@ -21,7 +27,10 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
     }
 
     public int getTotalErros() { return totalErros; }
-    public void imprimirTabelaSimbolos() { tabelaSimbolos.imprimir(); }
+    public void imprimirTabelaSimbolos() { tabelaGlobal.imprimir(); }
+
+    /** Mapa (nome -> tipo) das variáveis globais, consumido pelo gerador de Assembly. */
+    public java.util.Map<String, TipoVariavel> getMapaTipos() { return tabelaGlobal.mapaTipos(); }
 
     @Override
     public TipoVariavel visitPrograma(AnalisadorSintaticoParser.ProgramaContext ctx) {
@@ -39,7 +48,7 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
             String nomeVar = tokenId.getText().toLowerCase();
 
             try {
-                tabelaSimbolos.declarar(new Simbolo(nomeVar, tipo, tokenId.getLine()));
+                escopoAtual.declarar(new Simbolo(nomeVar, tipo, tokenId.getLine()));
             } catch (IllegalStateException e) {
                 erroSemantico(tokenId, "variável '" + nomeVar + "' já foi declarada.");
             }
@@ -55,12 +64,12 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
         Token tokenId = ctx.ID().getSymbol();
         String nomeVar = tokenId.getText().toLowerCase();
 
-        if (!tabelaSimbolos.existe(nomeVar)) {
+        if (!escopoAtual.existe(nomeVar)) {
             erroSemantico(tokenId, "variável '" + nomeVar + "' não foi declarada.");
             return null;
         }
 
-        TipoVariavel tipoVar  = tabelaSimbolos.buscarTipo(nomeVar);
+        TipoVariavel tipoVar  = escopoAtual.buscarTipo(nomeVar);
         TipoVariavel tipoExpr = visit(ctx.expressao());
 
         // Verifica compatibilidade de tipos
@@ -70,6 +79,16 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
                 && !tipoVar.equals(tipoExpr)) {
             erroSemantico(tokenId,"tipo incompatível na atribuição a '" + nomeVar + "': esperado " + tipoVar + ", encontrado " + tipoExpr + ".");
         }
+        return null;
+    }
+
+    // Bloco BEGIN/END: abre um escopo aninhado encadeado ao escopo pai.
+    @Override
+    public TipoVariavel visitBlocoComandos(AnalisadorSintaticoParser.BlocoComandosContext ctx) {
+        TabelaSimbolos anterior = escopoAtual;
+        escopoAtual = new TabelaSimbolos(anterior);   // encadeamento de referência (escopo pai)
+        visitChildren(ctx);
+        escopoAtual = anterior;                        // ao sair do bloco, restaura o escopo pai
         return null;
     }
 
@@ -110,7 +129,7 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
         while (lista != null) {
             Token tokenId = lista.ID().getSymbol();
             String nomeVar = tokenId.getText().toLowerCase();
-            if (!tabelaSimbolos.existe(nomeVar)) {
+            if (!escopoAtual.existe(nomeVar)) {
                 erroSemantico(tokenId, "variável '" + nomeVar + "' não foi declarada.");
             }
             lista = lista.listaIds();
@@ -237,18 +256,39 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
             Token tokenId = ctx.ID().getSymbol();
             String nomeVar = tokenId.getText().toLowerCase();
 
-            if (!tabelaSimbolos.existe(nomeVar)) {
+            if (!escopoAtual.existe(nomeVar)) {
                 erroSemantico(tokenId, "variável '" + nomeVar + "' não foi declarada.");
                 return TipoVariavel.DESCONHECIDO;
             }
-            return tabelaSimbolos.buscarTipo(nomeVar);
+            return escopoAtual.buscarTipo(nomeVar);
         }
 
-        if (ctx.CTE() != null) return TipoVariavel.INTEGER;
+        if (ctx.CTE() != null) {
+            verificarLimiteConstante(ctx.CTE().getSymbol());
+            return TipoVariavel.INTEGER;
+        }
         if (ctx.TRUE() != null) return TipoVariavel.BOOLEAN;
         if (ctx.FALSE() != null) return TipoVariavel.BOOLEAN;
         if (ctx.expressao() != null) return visit(ctx.expressao());
         return TipoVariavel.DESCONHECIDO;
+    }
+
+    /**
+     * Verificação de limites de constantes inteiras (Overflow de Constante).
+     * Converte o lexema para numérico e aplica a restrição física de 2 bytes
+     * com sinal: -32768 ≤ valor ≤ 32767. Fora deste intervalo é erro fatal.
+     */
+    private void verificarLimiteConstante(Token tokenCte) {
+        long valor;
+        try {
+            valor = Long.parseLong(tokenCte.getText());
+        } catch (NumberFormatException e) {
+            valor = Long.MAX_VALUE;  // excede qualquer limite
+        }
+        if (valor < CTE_MIN || valor > CTE_MAX) {
+            erroSemantico(tokenCte, "Overflow de Constante: valor " + tokenCte.getText()
+                    + " fora do intervalo permitido [" + CTE_MIN + ", " + CTE_MAX + "].");
+        }
     }
 
     // Auxiliar de verificação de tipo de operando
