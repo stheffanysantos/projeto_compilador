@@ -1,34 +1,27 @@
 package compilador;
 
-/**
- * Representa uma instrução de código de três endereços (3AC).
- *
- * Cada instrução possui no máximo três operandos. A estrutura é mantida de
- * forma "tuplada" (em vez de uma simples cadeia de texto) para que as fases
- * de otimização e de geração de código final possam inspecionar e reescrever
- * cada operando individualmente.
- */
+
 public class Instrucao {
 
     public enum Tipo {
-        COPIA,        // dest = arg1
-        BINARIA,      // dest = arg1 <op> arg2
-        UNARIA,       // dest = <op> arg1        (ex.: ~ para negação lógica)
-        LABEL,        // alvo:
-        GOTO,         // GOTO alvo
-        IF_FALSE,     // IF arg1 == 0 GOTO alvo
-        READ,         // READ dest
-        WRITE,        // WRITE arg1
-        WRITE_CADEIA, // WRITE "cadeia"
-        HALT          // fim do programa
+        COPIA,        
+        BINARIA,      
+        UNARIA,       
+        LABEL,        
+        GOTO,         
+        IF_FALSE,     
+        READ,         
+        WRITE,        
+        WRITE_CADEIA, 
+        HALT          
     }
 
     public Tipo tipo;
-    public String op;    // operador para BINARIA/UNARIA ("+", "-", "*", "/", "AND", "OR", "<", ...)
-    public String dest;  // destino (variável ou temporária)
+    public String op;    
+    public String dest;  
     public String arg1;
     public String arg2;
-    public String alvo;  // rótulo de desvio (GOTO/IF_FALSE) ou nome do rótulo (LABEL)
+    public String alvo;  
 
     private Instrucao(Tipo tipo) {
         this.tipo = tipo;

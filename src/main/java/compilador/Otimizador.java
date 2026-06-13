@@ -7,21 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Otimização de Código Intermediário.
- *
- * Opera diretamente sobre a lista de instruções de três endereços (3AC),
- * aplicando, de forma iterativa até atingir um ponto fixo, as quatro técnicas
- * previstas na especificação:
- *
- *  1. Dobramento de Constantes  (Constant Folding)
- *  2. Propagação de Constantes  (Constant Propagation)
- *  3. Redução de Força          (Strength Reduction)
- *  4. Eliminação de Código Morto (Dead Code Elimination)
- *
- * O objetivo é eliminar redundâncias e reduzir o custo de execução sem alterar
- * o comportamento lógico do programa.
- */
 public class Otimizador {
 
     private List<Instrucao> codigo;
@@ -53,9 +38,7 @@ public class Otimizador {
         System.out.println();
     }
 
-    // ------------------------------------------------------------------
-    // 1. Dobramento de Constantes: t = 2 + 5  ->  t = 7
-    // ------------------------------------------------------------------
+    // 1. Dobramento de Constantes
     private boolean dobramentoDeConstantes() {
         boolean mudou = false;
         for (Instrucao i : codigo) {
@@ -71,7 +54,7 @@ public class Otimizador {
             } else if (i.tipo == Instrucao.Tipo.UNARIA && "~".equals(i.op) && ehInteiro(i.arg1)) {
                 int v = Integer.parseInt(i.arg1);
                 i.tipo = Instrucao.Tipo.COPIA;
-                i.arg1 = (v == 0) ? "1" : "0";   // negação lógica sobre 0/1
+                i.arg1 = (v == 0) ? "1" : "0";   
                 i.op = null;
                 mudou = true;
             }
@@ -84,7 +67,7 @@ public class Otimizador {
             case "+":  return a + b;
             case "-":  return a - b;
             case "*":  return a * b;
-            case "/":  return (b != 0) ? a / b : null;   // não dobra divisão por zero
+            case "/":  return (b != 0) ? a / b : null;  
             case "AND": return (a != 0 && b != 0) ? 1 : 0;
             case "OR":  return (a != 0 || b != 0) ? 1 : 0;
             case "<":  return a < b  ? 1 : 0;
@@ -97,15 +80,12 @@ public class Otimizador {
         }
     }
 
-    // ------------------------------------------------------------------
-    // 2. Propagação de Constantes: x = 10 ; t = a * x  ->  t = a * 10
+    // 2. Propagação de Constantes
     //    Válida dentro de um bloco básico (reinicia em rótulos/desvios).
-    // ------------------------------------------------------------------
     private boolean propagacaoDeConstantes() {
         boolean mudou = false;
         Map<String, String> constantes = new HashMap<>();
         for (Instrucao i : codigo) {
-            // Fronteiras de bloco básico: zera o conhecimento acumulado.
             if (i.tipo == Instrucao.Tipo.LABEL
                     || i.tipo == Instrucao.Tipo.GOTO
                     || i.tipo == Instrucao.Tipo.IF_FALSE) {
@@ -132,16 +112,14 @@ public class Otimizador {
                 if (i.tipo == Instrucao.Tipo.COPIA && ehInteiro(i.arg1)) {
                     constantes.put(i.dest, i.arg1);
                 } else {
-                    constantes.remove(i.dest);   // destino passou a ter valor não-constante
+                    constantes.remove(i.dest);   
                 }
             }
         }
         return mudou;
     }
 
-    // ------------------------------------------------------------------
-    // 3. Redução de Força: t = x * 4  ->  t = x << 2
-    // ------------------------------------------------------------------
+    // 3. Redução de Força
     private boolean reducaoDeForca() {
         boolean mudou = false;
         for (Instrucao i : codigo) {
@@ -154,11 +132,11 @@ public class Otimizador {
 
             int valor = Integer.parseInt(cte);
             int k = log2ExatoPositivo(valor);
-            if (k == 0) {                       // x * 1 -> x
+            if (k == 0) {                      
                 i.tipo = Instrucao.Tipo.COPIA;
                 i.arg1 = var; i.op = null; i.arg2 = null;
                 mudou = true;
-            } else if (k > 0) {                 // x * 2^k -> x << k
+            } else if (k > 0) {                
                 i.arg1 = var;
                 i.op = "<<";
                 i.arg2 = String.valueOf(k);
@@ -168,30 +146,23 @@ public class Otimizador {
         return mudou;
     }
 
-    /** Retorna k se valor == 2^k (k>=0); -1 caso contrário. */
     private int log2ExatoPositivo(int valor) {
         if (valor <= 0) return -1;
-        if ((valor & (valor - 1)) != 0) return -1;   // não é potência de 2
+        if ((valor & (valor - 1)) != 0) return -1;  
         return Integer.numberOfTrailingZeros(valor);
     }
 
-    // ------------------------------------------------------------------
     // 4. Eliminação de Código Morto:
-    //    - IF com condição constante (desvio sempre/nunca tomado)
-    //    - código inalcançável após GOTO/HALT
-    //    - atribuições a temporárias nunca utilizadas
-    // ------------------------------------------------------------------
     private boolean eliminacaoDeCodigoMorto() {
         boolean mudou = false;
 
-        // (a) IF com condição constante.
         for (Instrucao i : codigo) {
             if (i.tipo == Instrucao.Tipo.IF_FALSE && ehInteiro(i.arg1)) {
-                if (Integer.parseInt(i.arg1) == 0) {   // 0 == 0 -> sempre desvia
+                if (Integer.parseInt(i.arg1) == 0) {   
                     i.tipo = Instrucao.Tipo.GOTO;
                     i.arg1 = null;
-                } else {                                // nunca desvia -> instrução morta
-                    i.tipo = null;                      // marca para remoção
+                } else {                                
+                    i.tipo = null;                      
                 }
                 mudou = true;
             }
@@ -231,8 +202,6 @@ public class Otimizador {
     private Set<String> operandosUsados() {
         Set<String> usados = new HashSet<>();
         for (Instrucao i : codigo) {
-            // arg1 é "uso" exceto quando é o literal de uma cópia pura? Não:
-            // mesmo em COPIA, arg1 é lido. Então sempre conta arg1/arg2.
             if (i.arg1 != null && (i.tipo != Instrucao.Tipo.WRITE_CADEIA)) usados.add(i.arg1);
             if (i.arg2 != null) usados.add(i.arg2);
         }
@@ -244,9 +213,7 @@ public class Otimizador {
         return removeu;
     }
 
-    // ------------------------------------------------------------------
     // Auxiliares
-    // ------------------------------------------------------------------
     private boolean ehInteiro(String s) {
         if (s == null || s.isEmpty()) return false;
         return s.matches("-?\\d+");

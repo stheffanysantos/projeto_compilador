@@ -21,7 +21,6 @@ public class Main {
         lexer.addErrorListener(new BaseErrorListener() {
             @Override
             public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int linha, int coluna, String msg, RecognitionException e) {
-                // Imprime o erro e interrompe
                 System.err.printf("ERRO LEXICO [linha %d, coluna %d]: %s%n",
                         linha, coluna + 1, msg);
                 throw new RuntimeException("Compilacao abortada por erro lexico.");
@@ -31,7 +30,7 @@ public class Main {
         CommonTokenStream tokens;
         try {
             tokens = new CommonTokenStream(lexer);
-            tokens.fill();  // força o lexer a processar todos os tokens
+            tokens.fill();  
         } catch (RuntimeException e) {
             System.err.println(e.getMessage());
             System.exit(1);

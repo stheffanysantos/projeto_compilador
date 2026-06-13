@@ -3,16 +3,6 @@ package compilador;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Geração de Código Intermediário (Código de Três Endereços - 3AC).
- *
- * Percorre a árvore sintática validada e a lineariza em uma lista de
- * {@link Instrucao}. Utiliza geradores de temporárias virtuais (t0, t1, ...) e
- * de rótulos simbólicos de desvio (L0, L1, ...), conforme a especificação.
- *
- * Os visitadores de expressão retornam diretamente o "endereço" do resultado:
- * o nome de uma temporária, de uma variável ou um literal imediato.
- */
 public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> {
 
     private final List<Instrucao> instrucoes = new ArrayList<>();
@@ -41,9 +31,6 @@ public class GeradorCodigo extends AnalisadorSintaticoParserBaseVisitor<String> 
         emite(Instrucao.halt());
         return null;
     }
-
-    // ----- Declarações -----
-    // Não geram código 3AC; a reserva de memória é feita na geração final.
 
     // ----- Bloco de Comandos -----
     @Override

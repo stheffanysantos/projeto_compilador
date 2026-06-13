@@ -6,17 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Geração de Código Final (Assembly x86 - sintaxe Intel).
- *
- * Traduz a lista de instruções de três endereços (otimizadas) para Assembly
- * x86 de 16/32 bits. Variáveis INTEGER e temporárias são mapeadas como WORD
- * (diretiva {@code dw}, registradores AX/BX/...); variáveis BOOLEAN como BYTE
- * (diretiva {@code db}, registradores AL/BL/...), onde falso = 0 e verdadeiro = 1.
- *
- * O arquivo gerado contém a seção {@code .data} (reserva de memória de todas as
- * variáveis e temporárias) e a seção {@code .code} (instruções sequenciais).
- */
+
 public class GeradorAssembly {
 
     private final List<Instrucao> codigo;
@@ -49,9 +39,7 @@ public class GeradorAssembly {
         return asm.toString();
     }
 
-    // ------------------------------------------------------------------
     // Seção .data
-    // ------------------------------------------------------------------
     private void gerarSecaoData() {
         // Variáveis declaradas na Tabela de Símbolos.
         for (Map.Entry<String, TipoVariavel> e : tipos.entrySet()) {
@@ -70,7 +58,7 @@ public class GeradorAssembly {
             if (i.tipo == Instrucao.Tipo.WRITE_CADEIA && !cadeias.containsKey(i.arg1)) {
                 String rotulo = "str" + cadeias.size();
                 cadeias.put(i.arg1, rotulo);
-                String texto = i.arg1.substring(1, i.arg1.length() - 1);  // remove aspas
+                String texto = i.arg1.substring(1, i.arg1.length() - 1); 
                 data.append(String.format("    %-12s db \"%s\", '$'%n", rotulo, texto));
             }
         }
@@ -90,9 +78,7 @@ public class GeradorAssembly {
         if (s != null && s.matches("t\\d+")) temps.add(s);
     }
 
-    // ------------------------------------------------------------------
     // Seção .code
-    // ------------------------------------------------------------------
     private void gerarSecaoCode() {
         for (Instrucao i : codigo) {
             code.append("    ; ").append(i).append('\n');
@@ -143,7 +129,7 @@ public class GeradorAssembly {
             case ">"  -> "jg";
             case ">=" -> "jge";
             case "==" -> "je";
-            default   -> "jne";   // "<>"
+            default   -> "jne";  
         };
         String lTrue = "Lcmp" + contadorAux;
         String lFim  = "Lend" + contadorAux;
@@ -161,7 +147,6 @@ public class GeradorAssembly {
     }
 
     private void gerarUnaria(Instrucao i) {
-        // Negação lógica (~) sobre booleano 0/1.
         carregarA(i.arg1);
         emit("xor ax, 1");
         armazenarA(i.dest);
@@ -174,7 +159,7 @@ public class GeradorAssembly {
     }
 
     private void gerarRead(Instrucao i) {
-        emit("call _read_integer");   // rotina externa: retorna inteiro em AX
+        emit("call _read_integer");  
         armazenarA(i.dest);
     }
 
@@ -191,9 +176,7 @@ public class GeradorAssembly {
         emit("int 21h");
     }
 
-    // ------------------------------------------------------------------
-    // Carga / armazenamento, respeitando WORD (inteiros/temps) x BYTE (booleanos)
-    // ------------------------------------------------------------------
+    // Carga / armazenamento
     private void carregarA(String operando) { carregar("ax", "al", operando); }
     private void carregarB(String operando) { carregar("bx", "bl", operando); }
 
