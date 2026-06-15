@@ -11,7 +11,7 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
     private static final int CTE_MAX = 32767;
 
     private final TabelaSimbolos tabelaGlobal = new TabelaSimbolos();
-    private TabelaSimbolos escopoAtual = tabelaGlobal;  // escopo corrente (suporta aninhamento)
+    private TabelaSimbolos escopoAtual = tabelaGlobal; 
     private int totalErros = 0;
 
     // Métodos auxiliares
@@ -29,7 +29,7 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
     public int getTotalErros() { return totalErros; }
     public void imprimirTabelaSimbolos() { tabelaGlobal.imprimir(); }
 
-    /** Mapa (nome -> tipo) das variáveis globais, consumido pelo gerador de Assembly. */
+    // Mapa
     public java.util.Map<String, TipoVariavel> getMapaTipos() { return tabelaGlobal.mapaTipos(); }
 
     @Override
@@ -52,7 +52,6 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
             } catch (IllegalStateException e) {
                 erroSemantico(tokenId, "variável '" + nomeVar + "' já foi declarada.");
             }
-            // Avança para o próximo Id da lista
             lista = lista.listaIds();
         }
         return null;
@@ -82,13 +81,13 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
         return null;
     }
 
-    // Bloco BEGIN/END: abre um escopo aninhado encadeado ao escopo pai.
+    // Bloco BEGIN/END
     @Override
     public TipoVariavel visitBlocoComandos(AnalisadorSintaticoParser.BlocoComandosContext ctx) {
         TabelaSimbolos anterior = escopoAtual;
-        escopoAtual = new TabelaSimbolos(anterior);   // encadeamento de referência (escopo pai)
+        escopoAtual = new TabelaSimbolos(anterior);   
         visitChildren(ctx);
-        escopoAtual = anterior;                        // ao sair do bloco, restaura o escopo pai
+        escopoAtual = anterior;                       
         return null;
     }
 
@@ -147,11 +146,9 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
     public TipoVariavel visitExpressaoRelacional(AnalisadorSintaticoParser.ExpressaoRelacionalContext ctx) {
         TipoVariavel tipoEsq = visit(ctx.expressaoAditiva(0));
 
-        // Se há operador relacional (lista tem 2 expressões aditivas)
         if (ctx.expressaoAditiva().size() > 1) {
             TipoVariavel tipoDir = visit(ctx.expressaoAditiva(1));
 
-            // Os dois lados devem ter o mesmo tipo
             if (tipoEsq != null && tipoDir != null
                     && tipoEsq != TipoVariavel.DESCONHECIDO
                     && tipoDir != TipoVariavel.DESCONHECIDO
@@ -273,11 +270,6 @@ public class AnalisadorSemantico extends AnalisadorSintaticoParserBaseVisitor<Ti
         return TipoVariavel.DESCONHECIDO;
     }
 
-    /**
-     * Verificação de limites de constantes inteiras (Overflow de Constante).
-     * Converte o lexema para numérico e aplica a restrição física de 2 bytes
-     * com sinal: -32768 ≤ valor ≤ 32767. Fora deste intervalo é erro fatal.
-     */
     private void verificarLimiteConstante(Token tokenCte) {
         long valor;
         try {

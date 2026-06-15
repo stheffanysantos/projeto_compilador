@@ -27,6 +27,16 @@ public class Instrucao {
         this.tipo = tipo;
     }
 
+    public Instrucao copiar() {
+        Instrucao c = new Instrucao(this.tipo);
+        c.op = this.op;
+        c.dest = this.dest;
+        c.arg1 = this.arg1;
+        c.arg2 = this.arg2;
+        c.alvo = this.alvo;
+        return c;
+    }
+
     public static Instrucao copia(String dest, String arg1) {
         Instrucao i = new Instrucao(Tipo.COPIA);
         i.dest = dest;

@@ -12,7 +12,10 @@ public class Otimizador {
     private List<Instrucao> codigo;
 
     public Otimizador(List<Instrucao> codigo) {
-        this.codigo = new ArrayList<>(codigo);
+        this.codigo = new ArrayList<>();
+        for (Instrucao i : codigo) {
+            this.codigo.add(i.copiar());
+        }
     }
 
     public List<Instrucao> otimizar() {
